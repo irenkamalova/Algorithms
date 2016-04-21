@@ -76,9 +76,9 @@ public class PointSET {
     public static void main(String[] args) {
         // unit testing of the methods (optional) 
         PointSET ps = new PointSET();
-        ps.insert(new Point2D(1,1));
-        ps.insert(new Point2D(2,2));
-        ps.insert(new Point2D(2,3));
-        System.out.println(ps.nearest(new Point2D(3,3)));
+        ps.insert(new Point2D(1, 1));
+        ps.insert(new Point2D(2, 2));
+        ps.insert(new Point2D(2, 3));
+        System.out.println(ps.nearest(new Point2D(3, 3)));
     }
 }

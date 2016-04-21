@@ -1,10 +1,7 @@
-
 import edu.princeton.cs.algs4.Point2D;
 import edu.princeton.cs.algs4.RectHV;
 import edu.princeton.cs.algs4.StdDraw;
 import edu.princeton.cs.algs4.StdRandom;
-
-import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,7 +27,7 @@ public class KdTree {
             private RectHV rect;
 
             public Node(edu.princeton.cs.algs4.Point2D p, boolean color, int N,
-                    double x1, double y1, double x2, double y2) {
+                    double xmin, double ymin, double xmax, double ymax) {
                 if (color) {
                     this.key = p.y();
                 } else {
@@ -41,15 +38,12 @@ public class KdTree {
                 this.N = N;
                 this.left = null;
                 this.right = null;
+                this.rect = new RectHV(xmin, ymin, xmax, ymax);
             }
         }
 
         public TwoDTree() {
             root = null;
-        }
-
-        public TwoDTree(edu.princeton.cs.algs4.Point2D p) {
-            root = new Node(p, false, 1, 0, 0, 1, 1);
         }
 
         private int size(Node x) {
@@ -75,31 +69,43 @@ public class KdTree {
                 return;
             }*/
             if (root == null) {
-                root = new Node(p, BLACK, 1);
+                root = new Node(p, BLACK, 1, 0, 0, 1, 1);
             } else {
-                root = put(root, p, !root.color);
+                root = put(root, p, !root.color, 
+                        root.rect.xmin(), root.rect.ymin(), root.rect.xmax(), root.rect.ymax());
             }
             //root.color = BLACK;
             // assert check();
         }
 
-        private Node put(Node h, edu.princeton.cs.algs4.Point2D p, boolean color) {
+        private Node put(Node h, edu.princeton.cs.algs4.Point2D p, boolean color, 
+                double xmin, double ymin, double xmax, double ymax) {
             if (h == null) {
-                return new Node(p, color, 1);
+                return new Node(p, color, 1, xmin, ymin, xmax, ymax);
             }
             if (h.val == p) {
                 return h;
             }
             double key;
-            if (h.color) {
+            if (h.color) { 
                 key = p.y();
             } else {
                 key = p.x();
             }
             if (key < h.key) {
-                h.left = put(h.left, p, !h.color);
+                if (!h.color) // color is red
+                {
+                    h.left = put(h.left, p, !h.color, xmin, ymin, h.val.x(), ymax);
+                } else {
+                    h.left = put(h.left, p, !h.color, xmin, ymin, xmax, h.val.y());
+                }
             } else {
-                h.right = put(h.right, p, !h.color);
+                if (!h.color) // color is red
+                {
+                    h.right = put(h.right, p, !h.color, h.val.x(), ymin, xmax, ymax);
+                } else {
+                    h.right = put(h.right, p, !h.color, xmin, h.val.y(), xmax, ymax);
+                }
             }
             // fix-up any right-leaning links
             //if (isRed(h.right) && !isRed(h.left))      h = rotateLeft(h);
@@ -175,7 +181,6 @@ public class KdTree {
         }
 
         public Iterable<edu.princeton.cs.algs4.Point2D> range(RectHV rect) {
-            createRectangles(root, 0, 0, 1, 1);
             List<edu.princeton.cs.algs4.Point2D> l = new ArrayList<>();
             //RectHV that = new RectHV()
             //rect.intersects(rect)
@@ -196,30 +201,6 @@ public class KdTree {
             }
         }
 
-        private void createRectangles(Node h, double x1, double y1,
-                double x2, double y2) {
-            h.rect = new RectHV(x1, y1, x2, y2);
-            //StdDraw.rectangle(x1, y1, x2, y2);
-            if (h.left != null) {
-                
-                if (!h.color) // colore is red
-                {
-                    createRectangles(h.left, x1, y1, h.val.x(), y2);
-                } else {
-                    createRectangles(h.left, x1, y1, x2, h.val.y());
-                }
-            }
-
-            if (h.right != null) {
-                if (!h.color) // colore is red
-                {
-                    createRectangles(h.right, h.val.x(), y1, x2, y2);
-                } else {
-                    createRectangles(h.right, x1, h.val.y(), x2, y2);
-                }
-            }
-        }
-
         private class NearestPoint {
             private double minDist;
             private edu.princeton.cs.algs4.Point2D nearestPoint;
@@ -233,25 +214,58 @@ public class KdTree {
             private void nearest(Node h, edu.princeton.cs.algs4.Point2D p) {
                 //StdDraw.setPenColor(Color.GREEN);
                 //StdDraw.point(nearestPoint.x(), nearestPoint.y());
-                
-                if (h.left != null && h.left.rect.distanceSquaredTo(p) < minDist) {
-                    double left = h.left.rect.distanceSquaredTo(p);
-                    double leftval = h.left.val.distanceSquaredTo(p);
-                    
-                    if (h.left.val.distanceSquaredTo(p) < minDist) {
-                        minDist = h.left.val.distanceSquaredTo(p);
-                        nearestPoint = h.left.val;
+                if (h.left != null && h.left.rect.distanceSquaredTo(p) < minDist 
+                        && h.right != null && h.right.rect.distanceSquaredTo(p) < minDist) {
+                    if (h.left.rect.contains(p)) {
+                        double dist1 = h.left.val.distanceSquaredTo(p);
+                        if (dist1 < minDist) {
+                            minDist = dist1;
+                            nearestPoint = h.left.val;
+                        }
+                        nearest(h.left, p);
+                        if (h.right.rect.distanceSquaredTo(p) < minDist) {
+                            double dist2 = h.right.val.distanceSquaredTo(p); 
+                            if (dist2 < minDist) {
+                                minDist = dist2;
+                                nearestPoint = h.right.val;
+                            }
+                            nearest(h.right, p);
+                        }
+                    } else {
+                        double dist2 = h.right.val.distanceSquaredTo(p); 
+                        if (dist2 < minDist) {
+                            minDist = dist2;
+                            nearestPoint = h.right.val;
+                        }
+                        nearest(h.right, p);
+                        if (h.left.rect.distanceSquaredTo(p) < minDist) {  
+                            double dist = h.left.val.distanceSquaredTo(p);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                nearestPoint = h.left.val;
+                            }
+                            nearest(h.left, p);
+                        }
                     }
-                    nearest(h.left, p);
+                        
                 }
-                if (h.right != null && h.right.rect.distanceSquaredTo(p) < minDist) {
-                    double right = h.right.rect.distanceSquaredTo(p);
-                    double rightval = h.right.val.distanceSquaredTo(p);
-                    if (h.right.val.distanceSquaredTo(p) < minDist) {
-                        minDist = h.right.val.distanceSquaredTo(p);
-                        nearestPoint = h.right.val;
+                else {
+                    if (h.left != null && h.left.rect.distanceSquaredTo(p) < minDist) {  
+                        double dist = h.left.val.distanceSquaredTo(p);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearestPoint = h.left.val;
+                        }
+                        nearest(h.left, p);
                     }
-                    nearest(h.right, p);
+                    if (h.right != null && h.right.rect.distanceSquaredTo(p) < minDist) {
+                        double dist = h.right.val.distanceSquaredTo(p); 
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearestPoint = h.right.val;
+                        }
+                        nearest(h.right, p);
+                    }
                 }
                 //StdDraw.point(nearestPoint.x(), nearestPoint.y());
     
@@ -263,7 +277,7 @@ public class KdTree {
         };
         
         public edu.princeton.cs.algs4.Point2D nearest(edu.princeton.cs.algs4.Point2D p) {
-            createRectangles(root, 0, 0, 1, 1);
+            //createRectangles(root, 0, 0, 1, 1);
             NearestPoint nearestPoint = new NearestPoint(p);
             return nearestPoint.getNearestPoint();
         }
@@ -322,11 +336,17 @@ public class KdTree {
         if (rect == null) {
             throw new java.lang.NullPointerException();
         }
+        if (pointSet.isEmpty()) {
+            List<edu.princeton.cs.algs4.Point2D> l = new ArrayList<>();
+            return l;
+        }
         return pointSet.range(rect);
     }
 
     public edu.princeton.cs.algs4.Point2D nearest(edu.princeton.cs.algs4.Point2D p) {
         // a nearest neighbor in the set to point p; null if the set is empty
+        if (p == null) throw new java.lang.NullPointerException();
+        if (pointSet.isEmpty()) return null;
         return pointSet.nearest(p);
     }
 
@@ -353,7 +373,7 @@ public class KdTree {
         ps.insert(new Point2D(0.45, 0.8));
         ps.insert(new Point2D(0.35, 0.75));
         ps.insert(new Point2D(0.55, 0.65)); //10
-        ps.draw();
+        //ps.draw();
         PointSET brute = new PointSET();
         brute.insert(new Point2D(0.7, 0.2));
         brute.insert(new Point2D(0.7, 0.2));
@@ -384,9 +404,9 @@ public class KdTree {
             if (!brute.nearest(pop).equals(ps.nearest(pop))) {
                 System.out.println(pop);
             }
+            //System.out.println(brute.nearest(pop) + " " + ps.nearest(pop));
             i++;
         }
-        
         
         ps.draw();
         /*
