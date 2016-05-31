@@ -11,7 +11,6 @@ public class SeamCarver {
     private Picture picture;
     private int W;
     private int H;
-    private int N;
     
     
     public SeamCarver(Picture picture) {
@@ -21,8 +20,7 @@ public class SeamCarver {
         //picture.set(0, 0, Color.black);
         //this.picture.set(0, 1, Color.black);
         H = picture.height();
-        W = picture.width();
-        N = H * W; 
+        W = picture.width(); 
         //System.out.println(H);
         //System.out.println(W);
         
@@ -31,7 +29,8 @@ public class SeamCarver {
    
     public Picture picture() {
         // current picture
-        return picture;
+        Picture p = new Picture(picture);
+        return p;
     }
     
     public int width() {
@@ -73,8 +72,8 @@ public class SeamCarver {
     }
     
     private class Pixel {
-    	private int x;
-    	private int y;
+    	private final int x;
+    	private final int y;
     	//private double weight;
     	private boolean checked;
     	
@@ -105,19 +104,18 @@ public class SeamCarver {
     		return y;
     	}
     }
-
-    @SuppressWarnings("unchecked")
+    
     private int[] findSeam(double[][] matrix, int W, int H) {
-    	double[] distTo = new double[N];
-    	ArrayList<Integer>[] pathTo = (ArrayList<Integer>[]) new ArrayList[N];
+    	double[] distTo = new double[H * W];
+    	int[] pathTo = new int[H * W];
     	ArrayList<Pixel> pixels = new ArrayList<>();
-        for (int v = 0; v < N; v++) {
+        for (int v = 0; v < H * W; v++) {
             distTo[v] = Double.POSITIVE_INFINITY;
-            pathTo[v] = new ArrayList<>();
+            pathTo[v] = 0;
         }
         for (int v = 0; v < W; v++) {
         	distTo[v] = 1000;
-            pathTo[v].add(v);
+            //pathTo[v].add(v);
         }
         pixels.clear();
         for (int i = 0; i < H; i++) {
@@ -142,42 +140,43 @@ public class SeamCarver {
         	currPixel.uncheck();
         	i = currPixel.getX();
         	j = currPixel.getY();
-        	double startDist = distTo[createIndex(i, j, W)];
+                int currPosition = createIndex(i, j, W);
+        	double startDist = distTo[currPosition];
         	//System.out.println(matrix[i][j] + " stDist is " + startDist);
-            if(i != H - 1) {
+            if (i != H - 1) {
             	if (j != 0) {
             		//System.out.print(matrix[i + 1][j - 1] + " -- ");
-                    if (distTo[createIndex(i + 1, j - 1, W)] > startDist + matrix[i + 1][j - 1]) {
-                        distTo[createIndex(i + 1, j - 1, W)] = startDist + matrix[i + 1][j - 1];
-                        pathTo[createIndex(i + 1, j - 1, W)] = new ArrayList<Integer>(pathTo[createIndex(i, j, W)]);
-                        pathTo[createIndex(i + 1, j - 1, W)].add(j - 1);
-                        if (!pixels.get(createIndex(i + 1, j - 1, W)).checked()) {
+                    int index = createIndex(i + 1, j - 1, W);
+                    if (distTo[index] > startDist + matrix[i + 1][j - 1]) {
+                        distTo[index] = startDist + matrix[i + 1][j - 1];
+                        pathTo[index] = currPosition;
+                        if (!pixels.get(index).checked()) {
                         	q.enqueue(pixels.get(createIndex(i + 1, j - 1, W)));
-                        	pixels.get(createIndex(i + 1, j - 1, W)).check();
+                        	pixels.get(index).check();
                         }
                     }
                 }
                 if (j != W) {
                 	//System.out.print(matrix[i + 1][j] + " -- ");
                     //System.out.println(createIndex(i + 1, j, W));
-                    if (distTo[createIndex(i + 1, j, W)] > startDist + matrix[i + 1][j]) {
-                        distTo[createIndex(i + 1, j, W)] = startDist + matrix[i + 1][j];
-                        pathTo[createIndex(i + 1, j, W)] = new ArrayList<Integer>(pathTo[createIndex(i, j, W)]);
-                        pathTo[createIndex(i + 1, j, W)].add(j);
-                        if (!pixels.get(createIndex(i + 1, j, W)).checked()) {
-                        	q.enqueue(pixels.get(createIndex(i + 1, j, W)));
-                        	pixels.get(createIndex(i + 1, j, W)).check();
+                    int index = createIndex(i + 1, j, W);
+                    if (distTo[index] > startDist + matrix[i + 1][j]) {
+                        distTo[index] = startDist + matrix[i + 1][j];
+                        pathTo[index] = currPosition;
+                        if (!pixels.get(index).checked()) {
+                        	q.enqueue(pixels.get(index));
+                        	pixels.get(index).check();
                         }
                     }
                 }
                 if (j != W - 1) {
                 	//System.out.print(matrix[i + 1][j + 1]);
-                    if (distTo[createIndex(i + 1, j + 1, W)] > startDist + matrix[i + 1][j + 1]) {
-                        distTo[createIndex(i + 1, j + 1, W)] = startDist + matrix[i + 1][j + 1];
-                        pathTo[createIndex(i + 1, j + 1, W)] = new ArrayList<Integer>(pathTo[createIndex(i, j, W)]);
-                        pathTo[createIndex(i + 1, j + 1, W)].add(j + 1);
-                        if (!pixels.get(createIndex(i + 1, j + 1, W)).checked()) {
-                        	q.enqueue(pixels.get(createIndex(i + 1, j + 1, W)));
+                    int index = createIndex(i + 1, j + 1, W);
+                    if (distTo[index] > startDist + matrix[i + 1][j + 1]) {
+                        distTo[index] = startDist + matrix[i + 1][j + 1];
+                        pathTo[index] = currPosition;
+                        if (!pixels.get(index).checked()) {
+                        	q.enqueue(pixels.get(index));
                         }
                     }
                 }
@@ -195,33 +194,39 @@ public class SeamCarver {
         System.out.println();
         */
         ///*
-        int thatCell;
         if (W == 1) {
-        	thatCell = H - 1; 
+                int[] path = new int[H];
+                for (int k = 0; k < H; k++) {
+                    path[k] = 0;
+                }
+                return path;
         }
         else {
-	        double minDist = distTo[W * H - W + 1];
-	        thatCell = W * H - W + 1;
-	        
-	        for (j = W * H - W + 1; j < W * H; j = j + 3) {
-	        	//System.out.println("j is " + j);
-	            if (minDist > distTo[j]) {
-	                minDist = distTo[j];
-	                thatCell = j;
-	            }
-	        }
+            int thatCell;
+            double minDist = distTo[W * H - W + 1];
+            thatCell = W * H - W + 1;
+
+            for (j = W * H - W + 1; j < W * H; j = j + 3) {
+                    //System.out.println("j is " + j);
+                if (minDist > distTo[j]) {
+                    minDist = distTo[j];
+                    thatCell = j;
+                }
+            }
+
+            //System.out.println(minDist);
+            //System.out.println("thatCell is " + thatCell);
+            int[] path = new int[H];
+            //int k = 0;
+            for (int k = H - 1; k >= 0; k--) {
+                //System.out.println(i);
+                path[k] = thatCell - W * k;
+                thatCell = pathTo[thatCell];
+                //k++;
+            }
+
+            return path;
         }
-        //System.out.println(minDist);
-        //System.out.println("thatCell is " + thatCell);
-        int[] path = new int[H];
-        int k = 0;
-        for(Integer iter : pathTo[thatCell]) {
-            //System.out.println(i);
-            path[k] = iter;
-            k++;
-        }
-        
-        return path;
         //*/
         //return null;
     }
@@ -256,43 +261,37 @@ public class SeamCarver {
         return findSeam(transMatrix, H, W);
     }
     
-    public void removeHorizontalSeam(int[] seam) {
-        // remove horizontal seam from current picture
+    private void removeSeam(int[] seam, int W, int H, boolean isVertical) {
         if (picture == null || seam == null) throw new java.lang.NullPointerException();
-        if (H <= 1 || seam.length != W || !seamIsCorrect(seam, H)) throw new java.lang.IllegalArgumentException();
-        Picture newPict = new Picture(W, H - 1);
-        
-        for (int col = 0; col < W; col++) {
+        if (W <= 1 || seam.length != H || !seamIsCorrect(seam, W)) throw new java.lang.IllegalArgumentException();
+        Picture newPict;
+        if (isVertical) {
+            newPict = new Picture(W - 1, H);
+        } else {
+            newPict = new Picture(H, W - 1);
+        }
+        for (int col = 0; col < H; col++) {
             int newrow = 0;
-            for (int row = 0; row < H; row++) {
-                //System.out.print( "(" + col + "," + row + ") ");
+            for (int row = 0; row < W; row++) {
                 if (row != seam[col]) {
-                    Color c = picture.get(col, row);
-                    newPict.set(col, newrow, c);
+                    if (isVertical) {
+                        Color c = picture.get(row, col);
+                        newPict.set(newrow, col, c);
+                    }
+                    else {
+                        Color c = picture.get(col, row);
+                        newPict.set(col, newrow, c);						
+                    }
                     newrow++;
                 }
-                else {
-                    //System.out.print("Row is " + row);
-                }
             }
-            //System.out.println();
         }
         picture = newPict;
-        H = H - 1;
-        /*
-        matrix = new double[H][W];
-        transMatrix = new double[W][H];
-        for (int i = 0; i < H; i++) {
-            for (int j = 0; j < W; j++) {
-                double e = energy(j, i);
-                matrix[i][j] = e;
-                transMatrix[j][i] = e;
-                
-                //System.out.print((int)matrix[i][j] + " ");
-            }
-            //System.out.println();
+        if (isVertical) {
+            this.W = this.W - 1;
+        } else {
+            this.H = this.H - 1;
         }
-		*/
     }
     
     private boolean seamIsCorrect(int[] seam, int bound) {
@@ -302,53 +301,15 @@ public class SeamCarver {
     		if (seam[i] > bound - 1) return false;
     		if (Math.abs((seam[i - 1] - seam[i])) > 1) return false;
     	}
-    	//if (seam[seam.length - 2] - seam[seam.length - 1] > 1) return false; 
     	return true;
     }
     
     public void removeVerticalSeam(int[] seam) {
-        // remove vertical seam from current picture
-        if (picture == null || seam == null) throw new java.lang.NullPointerException();
-        //System.out.println(W);
-        if (W <= 1 || seam.length != H || !seamIsCorrect(seam, W)) throw new java.lang.IllegalArgumentException();
-        //
-        //System.out.println("W is " + W);
-        //System.out.println("H is " + H);
-        Picture newPict = new Picture(W - 1, H);
-        
-        for (int col = 0; col < H; col++) {
-            int newrow = 0;
-            for (int row = 0; row < W; row++) {
-                //System.out.print( "(" + col + "," + row + ") ");
-                if (row != seam[col]) {
-                    Color c = picture.get(row, col);
-                    newPict.set(newrow, col, c);
-                    newrow++;
-                }
-                else {
-                    //System.out.print("Row is " + row);
-                }
-            }
-            //System.out.println();
-        }
-        //picture.setOriginLowerLeft()
-        picture = newPict;
-        W = W - 1;
-        /*
-        matrix = new double[H][W];
-        transMatrix = new double[W][H];
-        for (int i = 0; i < H; i++) {
-            for (int j = 0; j < W; j++) {
-                double e = energy(j, i);
-                matrix[i][j] = e;
-                transMatrix[j][i] = e;
-                
-                //System.out.print((int)matrix[i][j] + " ");
-            }
-            //System.out.println();
-        }
-        */
-        
+        removeSeam(seam, W, H, true);
+    }
+    
+    public void removeHorizontalSeam(int[] seam) {
+        removeSeam(seam, H, W, false);
     }
     
     private int createIndex(int i, int j, int N) {
@@ -356,20 +317,23 @@ public class SeamCarver {
     }
     
     public static void main(String[] args) {
-        Picture p = new Picture("6x5.png");
+        Picture p = new Picture("chameleon.png");
         SeamCarver sc = new SeamCarver(p);
         //for (int k = 0; k < 10; k++) {
             long startTime = System.currentTimeMillis();
             //System.out.println(startTime);
-            int seam[] = sc.findVerticalSeam();
+            for (int i = 0; i < 100; i++) {
+                int[] seam = sc.findVerticalSeam();
+                sc.removeVerticalSeam(seam);
+            }
             long stopTime = System.currentTimeMillis();
             //System.out.println(stopTime);
             long elapsedTime = stopTime - startTime;
             System.out.println("Time is " + elapsedTime);
             
-            for (int i = 0; i < seam.length; i++) {
-                System.out.println(seam[i]);
-            }
+            //for (int i = 0; i < seam.length; i++) {
+            //    System.out.println(seam[i]);
+            //}
             //sc.removeVerticalSeam(seam);
             //seam = sc.findVerticalSeam();
             //for (int i = 0; i < seam.length; i++) {
@@ -378,6 +342,6 @@ public class SeamCarver {
             //sc.removeVerticalSeam(seam);
         //}
         
-        //sc.picture().show();
+        sc.picture().show();
     }
 }
