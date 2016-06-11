@@ -10,6 +10,7 @@ public class BoggleSolver {
     private BoggleBoard board;
     private List<String> l = new ArrayList<>();
     private MyTST<Integer> tst;
+    private boolean[][] marked2;
     
     // Initializes the data structure using the given array of strings as the dictionary.
     // (You can assume each word in the dictionary contains only the uppercase letters A through Z.)
@@ -26,92 +27,58 @@ public class BoggleSolver {
         }
         
     }
-    /*
-    private class Dictionary {
-        private TST tst;
-        
-        public Dictionary() {
-            tst = new TST<>();
-            
-        }
-        
-        public boolean checkPrefix() {
-            
-        }
-    }
-*/
+
     // Returns the set of all valid words in the given Boggle board, as an Iterable.
-    public Iterable<String> getAllValidWords(BoggleBoard board) {
+    public Iterable<String> getAllValidWords(BoggleBoard currentBoard) {
         
-        this.board = board;
+        this.board = currentBoard;
         M = board.rows();
         N = board.cols();
-        boolean[][] marked = new boolean[M][N];
+        //boolean[][] marked = new boolean[M][N];
+        marked2 = new boolean[M][N];
         l.clear();
         for (int k = 0; k < M; k++) {
             for (int m = 0; m < N; m++) {      
-                marked[k][m] = false;
+                marked2[k][m] = false;
             }
         }
         for (int i = 0; i < M; i++) {
             for (int j = 0; j < N; j++) {                
-                StringBuilder path = new StringBuilder(board.getLetter(i, j));
-                
-                searchingPaths(path, i, j, marked.clone());
+                StringBuilder path = new StringBuilder(board.getLetter(i, j));       
+                searchingPaths(path, i, j);
             }
         }
-        
-        //for (String s : l) {
-        //    System.out.println(s);
-        //}
-        //System.out.println(l.size());
-        //board.
         return l;
         
-    }
-    
-    private void searchingPaths(StringBuilder path, int i, int j, boolean[][] marked) {
-        boolean[][] newmarked = new boolean[M][N];
-        for (int k = 0; k < M; k++) {
-            for (int m = 0; m < N; m++) {      
-                newmarked[k][m] = marked[k][m];
-            }
-        }
-        if (i >= 0 && i < M && j >= 0 && j < N  && !newmarked[i][j]) {
-            newmarked[i][j] = true; // already was here (don't repeat)
+    }  
+
+    private void searchingPaths(StringBuilder path, int i, int j) {        
+        if (i >= 0 && i < M && j >= 0 && j < N  && !marked2[i][j]) {
+            marked2[i][j] = true; // already was here (don't repeat)
             StringBuilder npath = new StringBuilder();
-            //System.out.println(path);
             npath.append(path);
             npath.append(board.getLetter(i, j));
             String s = npath.toString();
             if (board.getLetter(i, j) == 'Q') {
-                //if (s.length() > 2 && tst.contains(s) && !l.contains(s)) {
-                //    l.add(s);
-                //}
                 npath.append('U');
                 s = npath.toString();
             }
             
             if (tst.hasPrefix(s)) {
-                //tst.keysWithPrefix(s) != null || 
-                if (s.length() > 2 && tst.contains(s) && !l.contains(s)) {
+                if (s.length() > 2 && tst.containsThis(s) && !l.contains(s)) {
                     l.add(s);
                 }
                 // go in 8 cases 
-                searchingPaths(npath, i - 1, j - 1, newmarked); //1
-                searchingPaths(npath, i - 1, j, newmarked); //2
-                searchingPaths(npath, i - 1, j + 1, newmarked); //3
-                searchingPaths(npath, i, j - 1, newmarked); //4
-                searchingPaths(npath, i, j + 1, newmarked); //5
-                searchingPaths(npath, i + 1, j - 1, newmarked); //6
-                searchingPaths(npath, i + 1, j, newmarked); //7
-                searchingPaths(npath, i + 1, j + 1, newmarked); //8
-                // if this word in dict
-                // return npath;
-                // else
-                //return null;
-                //return
+                searchingPaths(npath, i - 1, j - 1); //1
+                searchingPaths(npath, i - 1, j); //2
+                searchingPaths(npath, i - 1, j + 1); //3
+                searchingPaths(npath, i, j - 1); //4
+                searchingPaths(npath, i, j + 1); //5
+                searchingPaths(npath, i + 1, j - 1); //6
+                searchingPaths(npath, i + 1, j); //7
+                searchingPaths(npath, i + 1, j + 1); //8
             }
+            marked2[i][j] = false;
         }
     }
 
@@ -119,6 +86,8 @@ public class BoggleSolver {
     // (You can assume the word contains only the uppercase letters A through Z.)
     private class MyTST<Value> {
         private Node<Value> root;   // root of TST
+        private Node<Value> currentX;
+        private String lastPrefix;
 
         private class Node<Value> {
             private char c;                        // character
@@ -127,6 +96,8 @@ public class BoggleSolver {
         }
         
         public MyTST() {
+            lastPrefix = "";
+            currentX = root;
         }
         
         public void put(String key, Value val) {
@@ -136,6 +107,13 @@ public class BoggleSolver {
         
         public boolean contains(String key) {
             return get(key) != null;
+        }
+        
+        public boolean containsThis(String key) {
+            if (key == null) throw new NullPointerException();
+            if (key.length() == 0) throw new IllegalArgumentException("key must have length >= 1");
+            Node<Value> x = get(currentX, key, lastPrefix.length() - 1);
+            return x.val != null;
         }
         
         public Value get(String key) {
@@ -173,22 +151,40 @@ public class BoggleSolver {
         
         public boolean hasPrefix(String prefix) {
             //Queue<String> queue = new Queue<String>();
-            Node<Value> x = get(root, prefix, 0);
+             Node<Value> x;
+             int a = prefix.length();
+            if (prefix.length() == 1 || prefix.length() - 1 != lastPrefix.length()) {
+                x = get(root, prefix, 0);
+            }
+            else {
+                x = get(currentX, prefix, lastPrefix.length() - 1);
+            }    
             if (x == null) return false;
-            else return true;
+            else {
+                currentX = x;
+                lastPrefix = prefix;
+                return true;
+            }
         }
     }
     
     
     public int scoreOf(String word) {
-        return 0;
+        int lenght = word.length();
+        if (!tst.contains(word)) return 0;
+        if (lenght <= 2) return 0;
+        if (lenght <= 4) return 1;
+        if (lenght == 5) return 2;
+        if (lenght == 6) return 3;
+        if (lenght == 7) return 5;
+        return 11;
     }
     
     public static void main(String[] args) {
         In in = new In("dictionary-yawl.txt");
         String[] s = in.readAllStrings();
         
-        BoggleBoard board = new BoggleBoard("board-quinquevalencies.txt");
+        BoggleBoard board = new BoggleBoard("board4x4.txt");
         BoggleSolver bs = new BoggleSolver(s);
         long startTime = System.currentTimeMillis();
         bs.getAllValidWords(board);
@@ -198,8 +194,5 @@ public class BoggleSolver {
         for(String result : bs.getAllValidWords(board)) {
             System.out.println(result);
         }
-        
-        
-
     }
 }
